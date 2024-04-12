@@ -1,22 +1,26 @@
 package epsi.software.sakila.Country;
 
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 
 @RequiredArgsConstructor
 @Service
-public class CountryService implements ICountryService {
+public class CountryService {
 
 
     private final CountryRepository countryRepository;
 
-    public List<Country> getAll() {
-        return countryRepository.findAll();
+    public Flux<Country> getAll() {
+        return Flux.fromIterable(countryRepository.findAll())
+                .switchIfEmpty(Flux.defer(() -> Flux.error(new ResponseStatusException(HttpStatus.NOT_FOUND))));
     }
 
     public Mono<Country> getById(Long id) {
@@ -25,36 +29,35 @@ public class CountryService implements ICountryService {
                         country.getId(),
                         country.getCountry(),
                         country.getLastUpdate()
-                ));
+                ))
+                .switchIfEmpty(Mono.defer(() -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND))));
     }
 
-
-    public Mono<Country> updateCountry(Country country) {
-        return Mono.justOrEmpty(countryRepository.save(country))
-                .map(country1 -> new Country(
-                        country1.getId(),
-                        country1.getCountry()
-                ));
+    public Mono<Country> updateCountry(Long id, String countryName) {
+        return Mono.justOrEmpty(countryRepository.findById(id))
+                .map(country -> new Country(
+                        country.getId(),
+                        countryName,
+                        LocalDateTime.now()
+                ))
+                .flatMap(country -> Mono.justOrEmpty(countryRepository.save(country)))
+                .switchIfEmpty(Mono.defer(() -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND))));
     }
 
-    @Override
-    public Mono<Country> createCountry(Country country) {
-        return Mono.justOrEmpty(countryRepository.save(country))
-                .map(country1 -> new Country(
-                        country1.getId(),
-                        country1.getCountry(),
-                        country1.getLastUpdate()
-                ));
+    public Mono<Country> createCountry(String countryName) {
+        return Mono.justOrEmpty(countryRepository.save(new Country(
+                        countryName,
+                        LocalDateTime.now()
+                )))
+                .switchIfEmpty(Mono.defer(() -> Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR))));
     }
 
-    @Override
-    public Boolean deleteCountry(Long id) {
-
-        if (countryRepository.existsById(id)) {
-            countryRepository.deleteById(id);
-            return true;
-        } else {
-            return false;
-        }
+    public Mono<String> deleteCountry(Long id) {
+        return Mono.justOrEmpty(countryRepository.findById(id))
+                .switchIfEmpty(Mono.defer(() -> Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Country not found with id: " + id))))
+                .flatMap(country -> {
+                    countryRepository.delete(country);
+                    return Mono.just("Country with id " + id + " has been successfully deleted.");
+                });
     }
 }

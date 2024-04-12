@@ -1,48 +1,52 @@
 package epsi.software.sakila.Country;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/country")
+@RequiredArgsConstructor
 public class CountryController {
 
     private final CountryService countryService;
 
-    public CountryController(CountryService countryService) {
-        this.countryService = countryService;
-    }
-
     @GetMapping("")
-    public List<Country> getAll(@RequestParam(name = "id", required = false) Long id) {
+    public Flux<Country> getAll(@RequestParam(name = "id", required = false) Long id) {
         return countryService.getAll();
     }
 
-    @GetMapping("id")
-    public Mono<Country> getById(@RequestParam Long id) {
+    @GetMapping("/{id}")
+    public Mono<Country> getById(@PathVariable Long id) {
         return countryService.getById(id)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED)));
     }
 
-
-    @PostMapping("update")
-    public Mono<Country> updateCountry(@RequestBody Country country) {
-        return countryService.updateCountry(country)
+    @PutMapping("/{id}")
+    public Mono<Country> updateCountry(@PathVariable Long id, @RequestBody String countryName) {
+        return countryService.updateCountry(id, countryName)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED)));
     }
-    @PostMapping("create")
-    public Mono<Country> createCountry(@RequestBody Country country){
-        return countryService.createCountry(country)
+    @PostMapping("")
+    public Mono<Country> createCountry(@RequestBody String countryName){
+        return countryService.createCountry(countryName)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED)));
     }
 
-    @DeleteMapping("delete")
-    public Boolean deleteCountry(@RequestParam Long id){
+    @DeleteMapping("/{id}")
+    public Mono<String> deleteCountry(@PathVariable Long id){
         return countryService.deleteCountry(id);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<String> handleResponseStatusException(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
     }
 
 }
