@@ -6,6 +6,7 @@ import epsi.software.sakila.services.CountryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,10 +23,16 @@ public class CountryController {
         this.service = service;
     }
 
-    @GetMapping(value ={"","/all"} , produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}, headers = "content-type=text/plain")
+    @GetMapping(value ={"","/all"} , produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
     public List<Country> getAll(){
         log.trace("call get all country");
         return service.readAll();
+    }
+
+    @GetMapping(value ={"/{id}"})
+    public Country getOne(@PathVariable Long id){
+        log.trace("Country id: {}",id);
+        return service.read(id);
     }
 
     @PostMapping("/create")
